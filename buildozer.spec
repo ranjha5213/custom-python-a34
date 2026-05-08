@@ -1,7 +1,7 @@
 [app]
 title = Custom A34 Python
-package.name = a34python
-package.domain = org.ranjha
+package.name = mya34app
+package.domain = org.test
 source.dir = src
 requirements = python3,kivy,sdl2,pyjnius
 
