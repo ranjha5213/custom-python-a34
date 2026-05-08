@@ -4,7 +4,7 @@ title = Custom A34 Python
 package.name = mya34app
 package.domain = org.test
 source.dir = src
-requirements = python3,kivy,sdl2,pyjnius
+requirements = python3,kivy==2.3.0,kivymd,pillow
 
 # Crucial for A34 hardware
 android.archs = arm64-v8a
