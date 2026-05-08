@@ -10,9 +10,15 @@ class MainApp(MDApp):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
         self.label = MDLabel(text="WiFi & Sensor System Active", halign="center", font_style="H4")
-        button = MDRaisedButton(text="AUTHORIZE ALL ACCESS", pos_hint={"center_x": .5}, on_release=self.ask_permissions)
-        layout.add_widget(self.label); layout.add_widget(button)
-        screen = MDScreen(); screen.add_widget(layout)
+        button = MDRaisedButton(
+            text="AUTHORIZE ALL ACCESS", 
+            pos_hint={"center_x": .5}, 
+            on_release=self.ask_permissions
+        )
+        layout.add_widget(self.label)
+        layout.add_widget(button)
+        screen = MDScreen()
+        screen.add_widget(layout)
         return screen
 
     def ask_permissions(self, instance):

@@ -10,26 +10,13 @@ jobs:
           python-version: '3.11'
       - name: Install Dependencies
         run: |
-          pip install buildozer Cython==0.29.33 google-generativeai
-          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev
-      - name: Build
-        id: build_step
-        continue-on-error: true
-        run: yes | buildozer -v android debug 2>&1 | tee build.log
-      - name: Heal
-        if: steps.build_step.outcome == 'failure'
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          if [ -f heal.py ]; then
-            python heal.py
-          else
-            echo "heal.py missing"
-          fi
-      - name: Retry
-        if: steps.build_step.outcome == 'failure'
-        run: buildozer android clean && yes | buildozer -v android debug
-      - uses: actions/upload-artifact@v4
+          pip install buildozer Cython==0.29.33
+          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev libgstreamer1.0-dev
+      - name: Build with Buildozer
+        run: yes | buildozer -v android debug
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
           name: A34-APK
           path: bin/*.apk

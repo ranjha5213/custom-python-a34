@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-import yaml  # Make sure to run 'pip install pyyaml' in Termux
+import yaml  # Run 'pip install pyyaml' in Termux if not already done
 from PIL import Image
 
 # --- 1. CONFIGURATION DATA ---
@@ -18,9 +18,15 @@ class MainApp(MDApp):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
         self.label = MDLabel(text="WiFi & Sensor System Active", halign="center", font_style="H4")
-        button = MDRaisedButton(text="AUTHORIZE ALL ACCESS", pos_hint={"center_x": .5}, on_release=self.ask_permissions)
-        layout.add_widget(self.label); layout.add_widget(button)
-        screen = MDScreen(); screen.add_widget(layout)
+        button = MDRaisedButton(
+            text="AUTHORIZE ALL ACCESS", 
+            pos_hint={"center_x": .5}, 
+            on_release=self.ask_permissions
+        )
+        layout.add_widget(self.label)
+        layout.add_widget(button)
+        screen = MDScreen()
+        screen.add_widget(layout)
         return screen
 
     def ask_permissions(self, instance):
@@ -57,7 +63,6 @@ android.arch = arm64-v8a
 log_level = 2
 """
 
-# FIXED YAML: Removed 'runs-runs-on' typo
 MAIN_YML = """name: AI Build
 on: [push]
 jobs:
@@ -70,26 +75,13 @@ jobs:
           python-version: '3.11'
       - name: Install Dependencies
         run: |
-          pip install buildozer Cython==0.29.33 google-generativeai
-          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev
-      - name: Build
-        id: build_step
-        continue-on-error: true
-        run: yes | buildozer -v android debug 2>&1 | tee build.log
-      - name: Heal
-        if: steps.build_step.outcome == 'failure'
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          if [ -f heal.py ]; then
-            python heal.py
-          else
-            echo "heal.py missing"
-          fi
-      - name: Retry
-        if: steps.build_step.outcome == 'failure'
-        run: buildozer android clean && yes | buildozer -v android debug
-      - uses: actions/upload-artifact@v4
+          pip install buildozer Cython==0.29.33
+          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev libgstreamer1.0-dev
+      - name: Build with Buildozer
+        run: yes | buildozer -v android debug
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
         with:
           name: A34-APK
           path: bin/*.apk
@@ -98,18 +90,19 @@ jobs:
 # --- 2. LOGIC FUNCTIONS ---
 
 def validate_yaml(content):
-    """Checks for tabs, indentation errors, and basic YAML syntax."""
+    """Checks for tabs and indentation errors."""
     if "\\t" in content:
-        print("ERROR: YAML contains TABS. GitHub Actions only allows SPACES.")
+        print("ERROR: YAML contains TABS. Use SPACES only.")
         return False
     try:
         yaml.safe_load(content)
         return True
     except yaml.YAMLError as exc:
-        print(f"YAML IDENTATION ERROR: {exc}")
+        print(f"YAML Syntax Error: {exc}")
         return False
 
 def process_icon():
+    """Converts any image to the required 512x512 icon.png"""
     potential_icons = ['icon.png', 'icon.jpg', 'icon.jpeg', 'logo.png']
     found_file = next((f for f in potential_icons if os.path.exists(f)), None)
     try:
@@ -117,11 +110,13 @@ def process_icon():
             with Image.open(found_file) as img:
                 img = img.convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
                 img.save("icon.png", "PNG")
+                print(f"Icon created from: {found_file}")
         else:
             img = Image.new('RGBA', (512, 512), color=(0, 121, 107, 255))
             img.save("icon.png")
+            print("Created default Teal icon.")
     except Exception as e:
-        print(f"Icon Error: {e}")
+        print(f"Icon Processing Error: {e}")
 
 def write_file(path, content):
     dir_name = os.path.dirname(path)
@@ -129,7 +124,7 @@ def write_file(path, content):
         os.makedirs(dir_name, exist_ok=True)
     with open(path, "w") as f:
         f.write(content)
-    print(f"Verified & Written: {path}")
+    print(f"Generated: {path}")
 
 def run(cmd):
     result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
@@ -138,31 +133,31 @@ def run(cmd):
 # --- 3. MAIN EXECUTION ---
 
 def main():
-    print("--- 1. Validation Phase ---")
+    print("--- 1. Validation & Safety Check ---")
     if not validate_yaml(MAIN_YML):
-        print("Aborting: Workflow file is invalid."); sys.exit(1)
+        print("Build Aborted: main.yml is invalid."); sys.exit(1)
     
-    print("--- 2. Building Assets ---")
+    print("--- 2. Rebuilding Project Files ---")
     process_icon()
     write_file("main.py", MAIN_PY)
     write_file("buildozer.spec", BUILDOZER_SPEC)
     write_file(".github/workflows/main.yml", MAIN_YML)
 
-    print("\\n--- 3. Secure Deployment ---")
+    print("\\n--- 3. Deploying to GitHub ---")
     run("git add .")
-    print("Syncing with GitHub...")
-    # This force-aligns history to ensure push success
+    # Pull to sync, forcing local truth
     run("git pull origin main --no-rebase")
-    run('git commit -m "Verified Deploy: Fixed YAML and indentation"')
+    run('git commit -m "Verified Deploy: Strict YAML and Sensor Permissions"')
     
     if run("git push origin main"):
-        print("\\nSUCCESS! Clean build pushed. Check GitHub Actions.")
+        print("\\nSUCCESS! Pushed to GitHub.")
+        print("Visit the 'Actions' tab to see the live build logs.")
     else:
-        print("Standard push failed. Trying force sync...")
+        print("Push rejected. Attempting forced sync...")
         if run("git push origin main --force"):
-            print("\\nSUCCESS (Forced)! Check GitHub Actions.")
+            print("\\nSUCCESS (Forced Push)! Check your GitHub Actions.")
         else:
-            print("\\nFATAL: Deployment failed. Check your network.")
+            print("\\nFATAL: Could not push to GitHub. Check connection.")
 
 if __name__ == "__main__":
     main()
