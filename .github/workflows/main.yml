@@ -2,7 +2,7 @@ name: AI Build
 on: [push]
 jobs:
   build:
-    runs-runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -20,7 +20,12 @@ jobs:
         if: steps.build_step.outcome == 'failure'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python heal.py
+        run: |
+          if [ -f heal.py ]; then
+            python heal.py
+          else
+            echo "heal.py missing"
+          fi
       - name: Retry
         if: steps.build_step.outcome == 'failure'
         run: buildozer android clean && yes | buildozer -v android debug
