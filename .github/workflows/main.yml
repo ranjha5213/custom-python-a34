@@ -1,58 +1,30 @@
-name: Build A34 APK with AI Healing
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch: # Allows you to start the build manually from GitHub
-
+name: AI Build
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y build-essential git python3 python3-dev ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-          pip install --upgrade pip
-          pip install buildozer Cython==0.29.33 virtualenv google-generativeai
-
-      - name: First Build Attempt
-        id: build_one
+          pip install buildozer Cython==0.29.33 google-generativeai
+          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev
+      - name: Build
+        id: build_step
         continue-on-error: true
-        run: |
-          export PATH=$PATH:~/.local/bin/
-          # We use 'tee' to save the log and show it in the console at the same time
-          yes | buildozer -v android debug 2>&1 | tee build.log
-
-      - name: AI Healing Step
-        if: steps.build_one.outcome == 'failure'
+        run: yes | buildozer -v android debug 2>&1 | tee build.log
+      - name: Heal
+        if: steps.build_step.outcome == 'failure'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: |
-          echo "Build failed. Consultating Gemini AI for a patch..."
-          python heal.py
-
-      - name: Second Build Attempt (Post-Fix)
-        if: steps.build_one.outcome == 'failure'
-        run: |
-          echo "Retrying build with AI-applied fixes..."
-          export PATH=$PATH:~/.local/bin/
-          # Clean old broken build artifacts before retrying
-          buildozer android clean
-          yes | buildozer -v android debug
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        run: python heal.py
+      - name: Retry
+        if: steps.build_step.outcome == 'failure'
+        run: buildozer android clean && yes | buildozer -v android debug
+      - uses: actions/upload-artifact@v4
         with:
-          name: Samsung-A34-Debug-APK
+          name: A34-APK
           path: bin/*.apk
-

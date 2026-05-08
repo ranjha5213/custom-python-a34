@@ -1,5 +1,0 @@
-readline
-ipython
-kivy
-sdl2
-pyjnius
