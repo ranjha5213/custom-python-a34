@@ -5,12 +5,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Buildozer Action
-        uses: ArtemSerebriakov/buildozer-action@v1
-        with:
-          buildozer_version: master
-          python_version: 3.11
-          command: buildozer android debug
-          repository_read_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
 
+      - name: Buildozer Action
+        uses: digiserve/buildozer-action@v1
+        with:
+          command: buildozer android debug
+          buildozer_version: master
