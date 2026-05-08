@@ -1,4 +1,5 @@
 [app]
+version = 0.1
 title = Custom A34 Python
 package.name = mya34app
 package.domain = org.test
