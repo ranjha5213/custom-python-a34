@@ -20,11 +20,6 @@ jobs:
       - name: Build with Buildozer
         run: |
           export PATH=$PATH:~/.local/bin/
-          # We use "yes |" to auto-accept Android SDK licenses
+          # Fix for modern Ubuntu 24.04 runners
+          rm -rf .buildozer/android/platform/android-sdk
           yes | buildozer android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: A34-Python-App
-          path: bin/*.apk
