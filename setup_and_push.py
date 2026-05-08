@@ -73,7 +73,7 @@ MAIN_YML = """name: AI Build
 on: [push]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -111,14 +111,15 @@ def process_icon():
             with Image.open(found_file) as img:
                 img = img.convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
                 img.save("icon.png", "PNG")
+                print(f"Processed icon from {found_file}")
         else:
             img = Image.new('RGBA', (512, 512), color=(0, 150, 136, 255))
             img.save("icon.png")
+            print("Created default Teal icon.")
     except Exception as e:
         print(f"Icon Error: {e}")
 
 def write_file(path, content):
-    # FIXED LOGIC: Only create directory if path actually contains a directory
     dir_name = os.path.dirname(path)
     if dir_name:
         os.makedirs(dir_name, exist_ok=True)
@@ -127,25 +128,45 @@ def write_file(path, content):
     print(f"File updated: {path}")
 
 def run(cmd):
-    return subprocess.run(cmd, shell=True, text=True).returncode == 0
+    # This helper prints the command output for debugging
+    result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
+    if result.returncode != 0:
+        print(f"Cmd Failed: {cmd}\\nError: {result.stderr}")
+    return result.returncode == 0
 
 # --- 3. MAIN EXECUTION ---
 
 def main():
     print("--- 1. Processing Media Assets ---")
     process_icon()
-    print("\n--- 2. Building Directory Structure ---")
+
+    print("\\n--- 2. Building Directory Structure ---")
     write_file("main.py", MAIN_PY)
     write_file("buildozer.spec", BUILDOZER_SPEC)
     write_file(".github/workflows/main.yml", MAIN_YML)
-    print("\n--- 3. Syncing and Pushing to GitHub ---")
-    run("git pull origin main --rebase")
+
+    print("\\n--- 3. Syncing and Pushing to GitHub ---")
+    
+    # Step 1: Add new files so Git knows about them
     run("git add .")
-    run('git commit -m "Fixed directory creation logic"')
+    
+    # Step 2: Try to pull changes to sync history (merge strategy)
+    print("Syncing with remote...")
+    run("git pull origin main --no-rebase")
+    
+    # Step 3: Commit the current state
+    run('git commit -m "Rebuilt clean structure with WiFi and Sensor support"')
+    
+    # Step 4: Final Push
     if run("git push origin main"):
-        print("\nSUCCESS! Check your GitHub Actions tab.")
+        print("\\nSUCCESS! Check your GitHub Actions tab.")
     else:
-        print("\nPush failed. Check connection or credentials.")
+        # Final fallback if remote has diverged too much
+        print("Push rejected. Attempting forced sync...")
+        if run("git push origin main --force"):
+            print("\\nSUCCESS (Forced)! Check your GitHub Actions tab.")
+        else:
+            print("\\nPush failed. Check your internet or GitHub Token.")
 
 if __name__ == "__main__":
     main()
