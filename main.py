@@ -9,9 +9,9 @@ class MainApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
-        self.label = MDLabel(text="WiFi & Sensor System Active", halign="center", font_style="H4")
+        self.label = MDLabel(text="A34 System: Active", halign="center", font_style="H4")
         button = MDRaisedButton(
-            text="AUTHORIZE ALL ACCESS", 
+            text="AUTHORIZE ACCESS", 
             pos_hint={"center_x": .5}, 
             on_release=self.ask_permissions
         )
@@ -22,14 +22,18 @@ class MainApp(MDApp):
         return screen
 
     def ask_permissions(self, instance):
+        # NEARBY_WIFI_DEVICES requires API 33+ logic
         request_permissions([
-            Permission.CAMERA, Permission.RECORD_AUDIO, 
-            Permission.ACCESS_FINE_LOCATION, Permission.ACCESS_COARSE_LOCATION,
-            Permission.BODY_SENSORS, Permission.BLUETOOTH_CONNECT, 
-            Permission.BLUETOOTH_SCAN, Permission.READ_EXTERNAL_STORAGE, 
-            Permission.WRITE_EXTERNAL_STORAGE, Permission.NEARBY_WIFI_DEVICES
+            Permission.CAMERA, 
+            Permission.RECORD_AUDIO, 
+            Permission.ACCESS_FINE_LOCATION, 
+            Permission.BODY_SENSORS, 
+            Permission.BLUETOOTH_CONNECT, 
+            Permission.BLUETOOTH_SCAN,
+            Permission.READ_EXTERNAL_STORAGE,
+            Permission.WRITE_EXTERNAL_STORAGE
         ])
-        self.label.text = "Check for WiFi & Sensor popups!"
+        self.label.text = "Check for permission popups!"
 
 if __name__ == "__main__":
     MainApp().run()

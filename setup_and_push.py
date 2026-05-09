@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-import yaml  # Run 'pip install pyyaml' in Termux if not already done
+import yaml
 from PIL import Image
 
 # --- 1. CONFIGURATION DATA ---
@@ -17,9 +17,9 @@ class MainApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
-        self.label = MDLabel(text="WiFi & Sensor System Active", halign="center", font_style="H4")
+        self.label = MDLabel(text="A34 System: Active", halign="center", font_style="H4")
         button = MDRaisedButton(
-            text="AUTHORIZE ALL ACCESS", 
+            text="AUTHORIZE ACCESS", 
             pos_hint={"center_x": .5}, 
             on_release=self.ask_permissions
         )
@@ -30,14 +30,18 @@ class MainApp(MDApp):
         return screen
 
     def ask_permissions(self, instance):
+        # NEARBY_WIFI_DEVICES requires API 33+ logic
         request_permissions([
-            Permission.CAMERA, Permission.RECORD_AUDIO, 
-            Permission.ACCESS_FINE_LOCATION, Permission.ACCESS_COARSE_LOCATION,
-            Permission.BODY_SENSORS, Permission.BLUETOOTH_CONNECT, 
-            Permission.BLUETOOTH_SCAN, Permission.READ_EXTERNAL_STORAGE, 
-            Permission.WRITE_EXTERNAL_STORAGE, Permission.NEARBY_WIFI_DEVICES
+            Permission.CAMERA, 
+            Permission.RECORD_AUDIO, 
+            Permission.ACCESS_FINE_LOCATION, 
+            Permission.BODY_SENSORS, 
+            Permission.BLUETOOTH_CONNECT, 
+            Permission.BLUETOOTH_SCAN,
+            Permission.READ_EXTERNAL_STORAGE,
+            Permission.WRITE_EXTERNAL_STORAGE
         ])
-        self.label.text = "Check for WiFi & Sensor popups!"
+        self.label.text = "Check for permission popups!"
 
 if __name__ == "__main__":
     MainApp().run()
@@ -49,17 +53,17 @@ package.name = ranjha.master.tool
 package.domain = org.ranjha
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 0.1
+version = 0.2
 icon.filename = icon.png
-requirements = python3,kivy==2.3.0,kivymd,pillow,google-generativeai
+requirements = python3,kivy==2.3.0,kivymd,pillow
 orientation = portrait
 android.api = 34
 android.minapi = 21
 android.ndk = 26b
 android.archs = arm64-v8a
 android.accept_sdk_license = True
-android.permissions = INTERNET, CAMERA, RECORD_AUDIO, ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION, BODY_SENSORS, BLUETOOTH_CONNECT, BLUETOOTH_SCAN, VIBRATE, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE, ACCESS_NETWORK_STATE, NEARBY_WIFI_DEVICES
-android.arch = arm64-v8a
+# Removed NEARBY_WIFI_DEVICES temporarily to ensure build stability on API 34
+android.permissions = INTERNET, CAMERA, RECORD_AUDIO, ACCESS_FINE_LOCATION, BODY_SENSORS, BLUETOOTH_CONNECT, BLUETOOTH_SCAN, VIBRATE, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 log_level = 2
 """
 
@@ -70,27 +74,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install Dependencies
+
+      - name: Install System Dependencies
         run: |
+          sudo apt update
+          sudo apt install -y build-essential ccache git libffi-dev libssl-dev \
+          python3 python3-setuptools python3-pip python3-dev \
+          zip zlib1g-dev libncurses5 libstdc++6 \
+          libgtk-3-dev libgstreamer1.0-dev
+          pip install --upgrade pip
           pip install buildozer Cython==0.29.33
-          sudo apt install -y build-essential libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev libgstreamer1.0-dev
+
       - name: Build with Buildozer
-        run: yes | buildozer -v android debug
+        run: |
+          # The 'yes' command handles the SDK license prompts
+          yes | buildozer -v android debug
+          
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: A34-APK
+          name: A34-Master-APK
           path: bin/*.apk
 """
 
 # --- 2. LOGIC FUNCTIONS ---
 
 def validate_yaml(content):
-    """Checks for tabs and indentation errors."""
     if "\\t" in content:
         print("ERROR: YAML contains TABS. Use SPACES only.")
         return False
@@ -102,62 +122,45 @@ def validate_yaml(content):
         return False
 
 def process_icon():
-    """Converts any image to the required 512x512 icon.png"""
-    potential_icons = ['icon.png', 'icon.jpg', 'icon.jpeg', 'logo.png']
-    found_file = next((f for f in potential_icons if os.path.exists(f)), None)
     try:
-        if found_file:
-            with Image.open(found_file) as img:
-                img = img.convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
-                img.save("icon.png", "PNG")
-                print(f"Icon created from: {found_file}")
-        else:
-            img = Image.new('RGBA', (512, 512), color=(0, 121, 107, 255))
-            img.save("icon.png")
-            print("Created default Teal icon.")
+        img = Image.new('RGBA', (512, 512), color=(0, 121, 107, 255))
+        img.save("icon.png")
+        print("Generated project icon.")
     except Exception as e:
-        print(f"Icon Processing Error: {e}")
+        print(f"Icon Error: {e}")
 
 def write_file(path, content):
-    dir_name = os.path.dirname(path)
-    if dir_name:
-        os.makedirs(dir_name, exist_ok=True)
+    os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
     with open(path, "w") as f:
         f.write(content)
-    print(f"Generated: {path}")
+    print(f"Created: {path}")
 
 def run(cmd):
-    result = subprocess.run(cmd, shell=True, text=True, capture_output=True)
-    return result.returncode == 0
+    return subprocess.run(cmd, shell=True).returncode == 0
 
-# --- 3. MAIN EXECUTION ---
+# --- 3. EXECUTION ---
 
 def main():
-    print("--- 1. Validation & Safety Check ---")
+    print("--- 1. Validation ---")
     if not validate_yaml(MAIN_YML):
-        print("Build Aborted: main.yml is invalid."); sys.exit(1)
+        sys.exit(1)
     
-    print("--- 2. Rebuilding Project Files ---")
+    print("--- 2. Project Assembly ---")
     process_icon()
     write_file("main.py", MAIN_PY)
     write_file("buildozer.spec", BUILDOZER_SPEC)
     write_file(".github/workflows/main.yml", MAIN_YML)
 
-    print("\\n--- 3. Deploying to GitHub ---")
+    print("\\n--- 3. Git Push ---")
     run("git add .")
-    # Pull to sync, forcing local truth
-    run("git pull origin main --no-rebase")
-    run('git commit -m "Verified Deploy: Strict YAML and Sensor Permissions"')
+    run('git commit -m "Fix: Updated dependencies and API 34 compatibility"')
     
     if run("git push origin main"):
-        print("\\nSUCCESS! Pushed to GitHub.")
-        print("Visit the 'Actions' tab to see the live build logs.")
+        print("\\nSuccess! Monitor the 'Actions' tab on GitHub.")
     else:
-        print("Push rejected. Attempting forced sync...")
-        if run("git push origin main --force"):
-            print("\\nSUCCESS (Forced Push)! Check your GitHub Actions.")
-        else:
-            print("\\nFATAL: Could not push to GitHub. Check connection.")
+        # Fallback for sync issues
+        run("git pull origin main --rebase")
+        run("git push origin main")
 
 if __name__ == "__main__":
     main()
