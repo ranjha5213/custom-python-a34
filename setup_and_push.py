@@ -17,9 +17,9 @@ class MainApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
-        self.label = MDLabel(text="A34 System: Active", halign="center", font_style="H4")
+        self.label = MDLabel(text="A34 Master Tool Ready", halign="center", font_style="H4")
         button = MDRaisedButton(
-            text="AUTHORIZE ACCESS", 
+            text="START SESSION", 
             pos_hint={"center_x": .5}, 
             on_release=self.ask_permissions
         )
@@ -30,18 +30,12 @@ class MainApp(MDApp):
         return screen
 
     def ask_permissions(self, instance):
-        # NEARBY_WIFI_DEVICES requires API 33+ logic
         request_permissions([
-            Permission.CAMERA, 
-            Permission.RECORD_AUDIO, 
-            Permission.ACCESS_FINE_LOCATION, 
-            Permission.BODY_SENSORS, 
-            Permission.BLUETOOTH_CONNECT, 
-            Permission.BLUETOOTH_SCAN,
-            Permission.READ_EXTERNAL_STORAGE,
-            Permission.WRITE_EXTERNAL_STORAGE
+            Permission.CAMERA, Permission.RECORD_AUDIO, 
+            Permission.ACCESS_FINE_LOCATION, Permission.BODY_SENSORS,
+            Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE
         ])
-        self.label.text = "Check for permission popups!"
+        self.label.text = "Permissions Requested"
 
 if __name__ == "__main__":
     MainApp().run()
@@ -53,7 +47,7 @@ package.name = ranjha.master.tool
 package.domain = org.ranjha
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
-version = 0.2
+version = 0.3
 icon.filename = icon.png
 requirements = python3,kivy==2.3.0,kivymd,pillow
 orientation = portrait
@@ -62,11 +56,11 @@ android.minapi = 21
 android.ndk = 26b
 android.archs = arm64-v8a
 android.accept_sdk_license = True
-# Removed NEARBY_WIFI_DEVICES temporarily to ensure build stability on API 34
-android.permissions = INTERNET, CAMERA, RECORD_AUDIO, ACCESS_FINE_LOCATION, BODY_SENSORS, BLUETOOTH_CONNECT, BLUETOOTH_SCAN, VIBRATE, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
+android.permissions = INTERNET, CAMERA, RECORD_AUDIO, ACCESS_FINE_LOCATION, BODY_SENSORS, VIBRATE, WRITE_EXTERNAL_STORAGE, READ_EXTERNAL_STORAGE
 log_level = 2
 """
 
+# Optimized for Ubuntu 24.04 Runners
 MAIN_YML = """name: AI Build
 on: [push]
 jobs:
@@ -87,17 +81,17 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y build-essential ccache git libffi-dev libssl-dev \
-          python3 python3-setuptools python3-pip python3-dev \
-          zip zlib1g-dev libncurses5 libstdc++6 \
-          libgtk-3-dev libgstreamer1.0-dev
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential git ccache libffi-dev libssl-dev \
+            python3-setuptools python3-pip python3-dev \
+            zip zlib1g-dev libncurses5 libstdc++6 \
+            libgtk-3-dev libgstreamer1.0-dev
           pip install --upgrade pip
           pip install buildozer Cython==0.29.33
 
       - name: Build with Buildozer
         run: |
-          # The 'yes' command handles the SDK license prompts
           yes | buildozer -v android debug
           
       - name: Upload APK
@@ -112,7 +106,7 @@ jobs:
 
 def validate_yaml(content):
     if "\\t" in content:
-        print("ERROR: YAML contains TABS. Use SPACES only.")
+        print("ERROR: TABS detected in YAML. Use SPACES.")
         return False
     try:
         yaml.safe_load(content)
@@ -122,18 +116,15 @@ def validate_yaml(content):
         return False
 
 def process_icon():
-    try:
-        img = Image.new('RGBA', (512, 512), color=(0, 121, 107, 255))
-        img.save("icon.png")
-        print("Generated project icon.")
-    except Exception as e:
-        print(f"Icon Error: {e}")
+    img = Image.new('RGBA', (512, 512), color=(0, 121, 107, 255))
+    img.save("icon.png")
+    print("Default icon generated.")
 
 def write_file(path, content):
     os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
     with open(path, "w") as f:
         f.write(content)
-    print(f"Created: {path}")
+    print(f"Written: {path}")
 
 def run(cmd):
     return subprocess.run(cmd, shell=True).returncode == 0
@@ -141,27 +132,23 @@ def run(cmd):
 # --- 3. EXECUTION ---
 
 def main():
-    print("--- 1. Validation ---")
     if not validate_yaml(MAIN_YML):
         sys.exit(1)
     
-    print("--- 2. Project Assembly ---")
     process_icon()
     write_file("main.py", MAIN_PY)
     write_file("buildozer.spec", BUILDOZER_SPEC)
     write_file(".github/workflows/main.yml", MAIN_YML)
 
-    print("\\n--- 3. Git Push ---")
+    print("\\n--- Committing Fixes ---")
     run("git add .")
-    run('git commit -m "Fix: Updated dependencies and API 34 compatibility"')
+    run('git commit -m "Fix: Add --no-install-recommends to apt and update APK version"')
     
-    if run("git push origin main"):
-        print("\\nSuccess! Monitor the 'Actions' tab on GitHub.")
-    else:
-        # Fallback for sync issues
+    # Ensuring we handle remote conflicts
+    if not run("git push origin main"):
+        print("Push failed. Reversing and forcing update...")
         run("git pull origin main --rebase")
         run("git push origin main")
 
 if __name__ == "__main__":
     main()
-

@@ -9,9 +9,9 @@ class MainApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Teal"
         layout = MDBoxLayout(orientation='vertical', spacing=20, padding=50)
-        self.label = MDLabel(text="A34 System: Active", halign="center", font_style="H4")
+        self.label = MDLabel(text="A34 Master Tool Ready", halign="center", font_style="H4")
         button = MDRaisedButton(
-            text="AUTHORIZE ACCESS", 
+            text="START SESSION", 
             pos_hint={"center_x": .5}, 
             on_release=self.ask_permissions
         )
@@ -22,18 +22,12 @@ class MainApp(MDApp):
         return screen
 
     def ask_permissions(self, instance):
-        # NEARBY_WIFI_DEVICES requires API 33+ logic
         request_permissions([
-            Permission.CAMERA, 
-            Permission.RECORD_AUDIO, 
-            Permission.ACCESS_FINE_LOCATION, 
-            Permission.BODY_SENSORS, 
-            Permission.BLUETOOTH_CONNECT, 
-            Permission.BLUETOOTH_SCAN,
-            Permission.READ_EXTERNAL_STORAGE,
-            Permission.WRITE_EXTERNAL_STORAGE
+            Permission.CAMERA, Permission.RECORD_AUDIO, 
+            Permission.ACCESS_FINE_LOCATION, Permission.BODY_SENSORS,
+            Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE
         ])
-        self.label.text = "Check for permission popups!"
+        self.label.text = "Permissions Requested"
 
 if __name__ == "__main__":
     MainApp().run()
